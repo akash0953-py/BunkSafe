@@ -103,8 +103,11 @@ export function parseTimetable(rawText: string): TimetableDay[] {
       allTokens.push(name);
       if (currentDay) {
         const key = name.toLowerCase();
-        if (!currentDay.subjects.map((s) => s.toLowerCase()).includes(key)) {
-          currentDay.subjects.push(name);
+        if (!currentDay.subjects.map((s) => s.name.toLowerCase()).includes(key)) {
+          currentDay.subjects.push({
+            name: name,
+            classesPerSlot: 1,
+          });
           subjectsSeen.add(key);
         }
       }
@@ -117,15 +120,21 @@ export function parseTimetable(rawText: string): TimetableDay[] {
 
   // If no days detected, build a fallback single-week structure
   if (timetable.length === 0 && allTokens.length > 0) {
-    const unique = [...new Set(allTokens.map((t) => t.toLowerCase()))].map(
-      (t) => cleanSubjectName(t)
-    );
+    const unique = Array.from(
+      new Set(allTokens.map((t) => t.toLowerCase()))
+    ).map((t) => cleanSubjectName(t));
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
     const chunkSize = Math.ceil(unique.length / days.length);
     for (let i = 0; i < days.length; i++) {
       const chunk = unique.slice(i * chunkSize, (i + 1) * chunkSize);
       if (chunk.length > 0) {
-        timetable.push({ day: days[i], subjects: chunk });
+        timetable.push({
+  day: days[i],
+  subjects: chunk.map((subject) => ({
+    name: subject,
+    classesPerSlot: 1,
+  })),
+});
       }
     }
   }
@@ -138,10 +147,10 @@ export function extractUniqueSubjects(timetable: TimetableDay[]): string[] {
   const subjects: string[] = [];
   for (const day of timetable) {
     for (const sub of day.subjects) {
-      const key = sub.toLowerCase();
+      const key = sub.name.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        subjects.push(sub);
+        subjects.push(sub.name);
       }
     }
   }
@@ -155,7 +164,7 @@ export function countSubjectPerWeek(
   let count = 0;
   for (const day of timetable) {
     for (const sub of day.subjects) {
-      if (sub.toLowerCase() === subjectName.toLowerCase()) count++;
+      if (sub.name.toLowerCase() === subjectName.toLowerCase()) count++;
     }
   }
   return count || 1;
